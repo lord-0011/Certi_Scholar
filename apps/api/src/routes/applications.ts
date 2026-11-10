@@ -52,7 +52,7 @@ applications.get('/', async (req, res) => {
       .skip(p.skip)
       .limit(p.limit)
       .populate('student', 'name email profile')
-      .populate('scholarship', 'name code')
+      .populate('scholarship', 'name code amount')
       .populate('latestRecommendation', 'outcome summary createdAt')
       .lean(),
     p.paged ? ApplicationModel.countDocuments(filter) : undefined,

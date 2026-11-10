@@ -111,17 +111,23 @@ export default function Dashboard() {
   const uploadedTypes = new Set(docs.data?.filter((d) => !['rejected', 'purged'].includes(d.status)).map((d) => d.documentType));
   const open = overview.data?.find((s) => s._id === openId);
   const close = useCallback(() => setOpenId(undefined), []);
-  const count = (pred: (d: DocumentSummary) => boolean) => docs.data?.filter(pred).length ?? '—';
+  const count = (pred: (d: DocumentSummary) => boolean) => docs.data?.filter(pred).length;
+  const inReview = count((d) => ['queued', 'processing', 'needs_review'].includes(d.status));
+  const verified = count((d) => ['authority_match', 'manual_match'].includes(d.verification?.status ?? ''));
+  const awarded = apps.data?.filter((a) => a.status === 'awarded');
+  const pending = apps.data?.filter((a) => ['submitted', 'under_review', 'evaluated'].includes(a.status)).length;
+  const awardedTotal = awarded?.reduce((s, a) => s + (a.scholarship.amount ?? 0), 0) ?? 0;
+  const n = (v: number | undefined) => v ?? '—';
 
   return (
     <>
       <PageHead title="Dashboard" subtitle="Scholarships open to you and where your applications stand." />
       <div className="stack">
         <div className="stat-strip">
-          <Stat label="Documents uploaded" value={count(() => true)} />
-          <Stat label="Being reviewed" value={count((d) => ['queued', 'processing', 'needs_review'].includes(d.status))} />
-          <Stat label="Applications" value={apps.data?.length ?? '—'} />
-          <Stat label="Awarded" value={apps.data?.filter((a) => a.status === 'awarded').length ?? '—'} />
+          <Stat label="Documents uploaded" value={n(count(() => true))} icon="file" href="/documents" hint={docs.data ? `${verified} verified with the issuer` : undefined} />
+          <Stat label="Being reviewed" value={n(inReview)} icon="clock" href="/documents" tone={inReview ? 'warning' : undefined} hint={inReview ? 'Queued, processing or awaiting a verifier' : 'Nothing waiting on review'} />
+          <Stat label="Applications" value={n(apps.data?.length)} icon="inbox" href="/applications" hint={apps.data ? `${pending} awaiting a decision` : undefined} />
+          <Stat label="Awarded" value={n(awarded?.length)} icon="award" href="/applications?status=awarded" tone={awarded?.length ? 'success' : undefined} hint={awarded?.length ? `${inr(awardedTotal)} in total` : 'No awards yet'} />
         </div>
 
         <ErrorText error={overview.error} />

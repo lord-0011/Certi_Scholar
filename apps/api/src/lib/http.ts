@@ -57,7 +57,20 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
     res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } });
     return;
   }
-  const e = err as { name?: string; code?: string | number; message?: string };
+  const e = err as { name?: string; code?: string | number; message?: string; type?: string; status?: number };
+  // body-parser could not read the body: malformed JSON, wrong charset, or too large. These are client errors.
+  if (e.type === 'entity.parse.failed') {
+    res.status(400).json({ error: { code: 'invalid_json', message: 'The request body is not valid JSON. Check the data and try again.' } });
+    return;
+  }
+  if (e.type === 'entity.too.large') {
+    res.status(413).json({ error: { code: 'body_too_large', message: 'The request body is too large.' } });
+    return;
+  }
+  if (e.type === 'charset.unsupported' || e.type === 'encoding.unsupported') {
+    res.status(415).json({ error: { code: 'unsupported_encoding', message: 'The request body encoding is not supported.' } });
+    return;
+  }
   if (e.name === 'MulterError') {
     const tooLarge = e.code === 'LIMIT_FILE_SIZE';
     const message = tooLarge

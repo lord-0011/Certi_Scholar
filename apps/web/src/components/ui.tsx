@@ -1,5 +1,7 @@
+import Link from 'next/link';
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { humanize, STATUS_TONE, type Tone } from '@/lib/format';
+import { Icon, type IconName } from './Icon';
 
 /** Centred dialog over a dimmed page. Escape, the close button or a click outside closes it; focus returns to where it was. */
 export function Modal({ title, subtitle, onClose, footer, children }: { title: ReactNode; subtitle?: ReactNode; onClose: () => void; footer?: ReactNode; children: ReactNode }) {
@@ -88,14 +90,21 @@ export function ConfidenceMeter({ value, threshold }: { value: number; threshold
   );
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: ReactNode }) {
-  return (
-    <div className="stat">
+/**
+ * One tile in a stat strip. `tone` colours the number and icon only when it needs attention (e.g. warning while
+ * something is still being reviewed); `href` makes the whole tile open the matching list.
+ */
+export function Stat({ label, value, hint, icon, tone, href }: { label: string; value: ReactNode; hint?: ReactNode; icon?: IconName; tone?: Tone; href?: string }) {
+  const className = `stat${tone && tone !== 'neutral' ? ` tone-${tone}` : ''}`;
+  const body = (
+    <>
+      {icon && <span className="stat-icon" aria-hidden><Icon name={icon} size={15} /></span>}
       <div className="stat-label">{label}</div>
       <div className="stat-value">{value}</div>
-      {hint && <div className="small faint">{hint}</div>}
-    </div>
+      {hint && <div className="stat-caption">{hint}</div>}
+    </>
   );
+  return href ? <Link href={href} className={className}>{body}</Link> : <div className={className}>{body}</div>;
 }
 
 export const ErrorText = ({ error }: { error?: Error | string | null }) =>

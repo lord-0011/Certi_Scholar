@@ -6,6 +6,7 @@ import { post } from '@/lib/api';
 import { initials, roleLabel, useBranding } from '@/lib/branding';
 import { HOME } from '@/components/AppShell';
 import { ErrorText } from '@/components/ui';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import type { Me, Role } from '@/lib/types';
 
 const ROLES: Role[] = ['student', 'verifier', 'scholarship_officer', 'admin'];
@@ -34,28 +35,28 @@ function Showcase() {
         {branding.lead && <p className="login-lead">{branding.lead}</p>}
       </div>
       <svg className="login-art" viewBox="0 0 520 300" role="img" aria-label="A marksheet with highlighted fields and a recommendation card">
-        <rect x="24" y="16" width="250" height="268" rx="6" fill="#16171a" stroke="rgba(255,255,255,0.1)" />
-        <rect x="48" y="40" width="150" height="8" rx="4" fill="rgba(255,255,255,0.22)" />
-        <rect x="48" y="58" width="100" height="6" rx="3" fill="rgba(255,255,255,0.1)" />
-        <rect x="44" y="84" width="122" height="20" rx="3" fill="rgba(91,155,248,0.12)" stroke="rgba(91,155,248,0.7)" />
-        <rect x="52" y="91" width="104" height="6" rx="3" fill="rgba(255,255,255,0.35)" />
-        <rect x="44" y="112" width="92" height="20" rx="3" fill="rgba(235,87,87,0.12)" stroke="rgba(235,87,87,0.8)" />
-        <rect x="52" y="119" width="74" height="6" rx="3" fill="rgba(255,255,255,0.35)" />
+        <rect x="24" y="16" width="250" height="268" rx="6" className="art-paper" />
+        <rect x="48" y="40" width="150" height="8" rx="4" className="art-ink-strong" />
+        <rect x="48" y="58" width="100" height="6" rx="3" className="art-ink" />
+        <rect x="44" y="84" width="122" height="20" rx="3" className="art-box-info" />
+        <rect x="52" y="91" width="104" height="6" rx="3" className="art-ink-strong" />
+        <rect x="44" y="112" width="92" height="20" rx="3" className="art-box-danger" />
+        <rect x="52" y="119" width="74" height="6" rx="3" className="art-ink-strong" />
         {[150, 172, 194, 216].map((y) => (
           <g key={y}>
-            <rect x="48" y={y} width="110" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-            <rect x="214" y={y - 4} width="36" height="14" rx="3" fill="rgba(91,155,248,0.1)" stroke="rgba(91,155,248,0.6)" />
+            <rect x="48" y={y} width="110" height="6" rx="3" className="art-ink" />
+            <rect x="214" y={y - 4} width="36" height="14" rx="3" className="art-box-info" />
           </g>
         ))}
-        <rect x="48" y="246" width="70" height="6" rx="3" fill="rgba(255,255,255,0.12)" />
-        <rect x="196" y="240" width="58" height="18" rx="3" fill="rgba(242,201,76,0.12)" stroke="rgba(242,201,76,0.8)" />
-        <rect x="292" y="70" width="206" height="150" rx="8" fill="#141516" stroke="rgba(255,255,255,0.12)" />
-        <circle cx="314" cy="96" r="4" fill="#4cb782" />
-        <rect x="326" y="92" width="96" height="8" rx="4" fill="rgba(255,255,255,0.4)" />
+        <rect x="48" y="246" width="70" height="6" rx="3" className="art-ink" />
+        <rect x="196" y="240" width="58" height="18" rx="3" className="art-box-warning" />
+        <rect x="292" y="70" width="206" height="150" rx="8" className="art-card" />
+        <circle cx="314" cy="96" r="4" fill="var(--success)" />
+        <rect x="326" y="92" width="96" height="8" rx="4" className="art-ink-strong" />
         {[124, 148, 172, 196].map((y, i) => (
           <g key={y}>
-            <circle cx="316" cy={y} r="3.5" fill={i === 3 ? '#f2c94c' : '#4cb782'} />
-            <rect x="328" y={y - 3} width={i % 2 ? 120 : 146} height="6" rx="3" fill="rgba(255,255,255,0.14)" />
+            <circle cx="316" cy={y} r="3.5" fill={i === 3 ? 'var(--warning)' : 'var(--success)'} />
+            <rect x="328" y={y - 3} width={i % 2 ? 120 : 146} height="6" rx="3" className="art-ink" />
           </g>
         ))}
       </svg>
@@ -100,8 +101,11 @@ function LoginForm() {
     <div className="login-split">
       <Showcase />
       <main className="login-side">
-        <div className="brand login-brand">
-          <span className="brand-mark">{initials(branding.appName)}</span> {branding.appName}
+        <div className="login-top">
+          <div className="brand login-brand">
+            <span className="brand-mark">{initials(branding.appName)}</span> {branding.appName}
+          </div>
+          <ThemeToggle />
         </div>
         <form className="login-form card" onSubmit={submit} aria-label="Sign in">
           <h1>Log in</h1>

@@ -9,6 +9,7 @@ import { initials, roleLabel, useBranding } from '@/lib/branding';
 import { Loading } from './ui';
 import type { DocTypeDef, Me, Role } from '@/lib/types';
 import { Icon, type IconName } from './Icon';
+import { ThemeToggle } from './ThemeToggle';
 
 const MeContext = createContext<Me | null>(null);
 export const useMe = () => useContext(MeContext)!;
@@ -148,6 +149,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               <strong>{current?.label ?? (pathname.startsWith('/profile') ? 'My profile' : branding.appName)}</strong>
             </div>
             <div className="row">
+              <ThemeToggle />
               <Notifications />
               <Link href="/profile" className="user-link" title="My profile">
                 <span className="avatar">{(me.name || me.email).split(/[ @.]/).filter(Boolean).map((p) => p[0].toUpperCase()).slice(0, 2).join('')}</span>

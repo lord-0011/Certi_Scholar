@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Router } from 'express';
 import multer from 'multer';
 import type { NextFunction, Request, Response } from 'express';
+import { Types } from 'mongoose';
 import { z } from 'zod';
 import { config } from '../config.js';
 import {
@@ -142,22 +143,73 @@ const AWAITING_VERIFICATION = ['not_verified', 'simulated_match', 'simulated_mis
 const QUEUE_WORK: Record<string, unknown> = {
   $or: [{ status: { $in: ['needs_review', 'failed'] } }, { status: 'processed', 'verification.status': { $in: AWAITING_VERIFICATION } }],
 };
-const claimable = (userId: string): Record<string, unknown> => ({ $or: [{ assignedTo: null }, { assignedTo: userId }] });
+// An ObjectId (not the string id) so the same filter also works inside aggregate(), which does not cast.
+const claimable = (userId: string): Record<string, unknown> => ({ $or: [{ assignedTo: null }, { assignedTo: new Types.ObjectId(userId) }] });
 
-/** Review queue (field review, failed processing, verification work): metadata only. Officers claim a case before they can open its content. */
+/** Everything this officer may see in the queue: all open work for an admin, unclaimed or own cases for a verifier. */
+const queueVisible = (me: { id: string; role: string }): Record<string, unknown> => ({ $and: [QUEUE_WORK, me.role === 'verifier' ? claimable(me.id) : {}] });
+const QUEUE_REASON: Record<string, Record<string, unknown>> = {
+  field_review: { status: 'needs_review' },
+  processing_failed: { status: 'failed' },
+  verification: { status: 'processed' },
+};
+
+/** Totals for the whole queue, not just the page on screen. */
+documents.get('/review-queue/summary', requireRole('verifier', 'admin'), async (req, res) => {
+  const me = actor(req);
+  const visible = queueVisible(me);
+  const [total, mine, unassigned, fields] = await Promise.all([
+    DocumentModel.countDocuments(visible),
+    DocumentModel.countDocuments({ $and: [visible, { assignedTo: me.id }] }),
+    DocumentModel.countDocuments({ $and: [visible, { assignedTo: null }] }),
+    DocumentModel.aggregate([
+      { $match: { ...visible, status: 'needs_review' } },
+      { $lookup: { from: ExtractedFieldModel.collection.name, localField: '_id', foreignField: 'document', as: 'f', pipeline: [{ $match: { status: 'needs_review' } }, { $count: 'n' }] } },
+      { $group: { _id: null, n: { $sum: { $ifNull: [{ $first: '$f.n' }, 0] } } } },
+    ]),
+  ]);
+  res.json({ total, mine, unassigned, pendingFields: fields[0]?.n ?? 0 });
+});
+
+/**
+ * Review queue (field review, failed processing, verification work): metadata only. Officers claim a case before
+ * they can open its content. Oldest first by default so no case waits forever; ?page pages through the whole queue
+ * and X-Total-Count always carries the full count, so nothing past one page is hidden.
+ * Filters: ?assigned=me|unassigned, ?reason=field_review|processing_failed|verification, ?sort=oldest|newest.
+ */
 documents.get('/review-queue', requireRole('verifier', 'admin'), async (req, res) => {
   const me = actor(req);
-  const filter: Record<string, unknown> = { $and: [QUEUE_WORK, me.role === 'verifier' ? claimable(me.id) : {}] };
-  const docs = await DocumentModel.find(filter)
-    .sort({ createdAt: 1 })
-    .limit(config().LIST_PAGE_SIZE)
-    .lean();
+  const q = parse(
+    z.object({
+      assigned: z.enum(['me', 'unassigned']).optional(),
+      reason: z.enum(['field_review', 'processing_failed', 'verification']).optional(),
+      sort: z.enum(['oldest', 'newest']).default('oldest'),
+    }),
+    req.query,
+  );
+  const and: Record<string, unknown>[] = [queueVisible(me)];
+  if (q.assigned) and.push({ assignedTo: q.assigned === 'me' ? me.id : null });
+  if (q.reason) and.push(QUEUE_REASON[q.reason]);
+  const filter = { $and: and };
+  const p = paging(req);
+  const [docs, total] = await Promise.all([
+    DocumentModel.find(filter)
+      .sort({ createdAt: q.sort === 'oldest' ? 1 : -1, _id: q.sort === 'oldest' ? 1 : -1 })
+      .skip(p.skip)
+      .limit(p.limit)
+      .lean(),
+    DocumentModel.countDocuments(filter),
+  ]);
   const counts = await ExtractedFieldModel.aggregate([
     { $match: { document: { $in: docs.map((d) => d._id) }, status: 'needs_review' } },
     { $group: { _id: '$document', n: { $sum: 1 } } },
   ]);
   const pending = new Map(counts.map((c) => [String(c._id), c.n]));
-  res.json(
+  // Unpaged callers get at most LIST_PAGE_SIZE rows; the header tells them how many exist in total.
+  res.set('X-Total-Count', String(total));
+  sendPage(
+    res,
+    p,
     docs.map((d) => ({
       id: String(d._id),
       documentType: d.documentType,
@@ -167,6 +219,7 @@ documents.get('/review-queue', requireRole('verifier', 'admin'), async (req, res
       assignedTo: d.assignedTo ? String(d.assignedTo) : null,
       createdAt: d.createdAt,
     })),
+    total,
   );
 });
 
