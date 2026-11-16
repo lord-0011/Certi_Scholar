@@ -1,6 +1,6 @@
 # Extraction accuracy benchmark
 
-Generated 2026-11-04T03:57:32.356Z against samples\labels.json
+Generated 2026-11-13T05:23:25.423Z against samples\labels.json
 
 - Documents: 8 · classification accuracy: 100.0%
 - Field-level accuracy: **100.0%** (54/54) — acceptance target ≥ 90% on standard marksheets
